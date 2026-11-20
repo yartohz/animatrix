@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ANIMATRIX — 90's Animation Streaming</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+
+  <style>
+    :root { --cream: #F6F2E0; --red: #E6331A; --orange: #D42C07; --maroon: #6B0700; --blk: #000; --wht: #FFF; }
+    * { box-sizing: border-box; }
+    [v-cloak] { display: none; }
+    html, body { background: var(--cream) !important; color: var(--blk) !important; font-family: 'Space Mono', monospace; overflow-x: hidden; }
+    .f-arch { font-family: 'Archivo Black', sans-serif; }
+
+    /* CAIXAS, BOTÕES E INPUT BRUTALISTAS */
+    .brutal-box, .search-box, .featured-box, .wing-panel { background: var(--cream); border: 3px solid var(--blk); box-shadow: 6px 6px 0 var(--blk); border-radius: 0 !important; }
+    .search-box { padding: 1rem; }
+    .featured-box { padding: 1.25rem; }
+    .wing-panel { padding: 1rem; background: #EFEAD2; }
+
+    .btn-b { border: 3px solid var(--blk) !important; border-radius: 0 !important; box-shadow: 4px 4px 0 var(--blk) !important; font-family: 'Space Mono', monospace; font-weight: 700; text-transform: uppercase; transition: .12s; cursor: pointer; }
+    .btn-b:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--blk) !important; }
+    .btn-red { background: var(--red) !important; color: var(--cream) !important; }
+    .btn-cream { background: var(--cream) !important; color: var(--blk) !important; }
+    .btn-cream.is-on, .btn-blk { background: var(--blk) !important; color: var(--cream) !important; }
+    .btn-saved { background: var(--maroon) !important; color: var(--cream) !important; }
+    .inp-b { background: var(--wht) !important; color: var(--blk) !important; border: 3px solid var(--blk) !important; border-radius: 0 !important; box-shadow: 4px 4px 0 var(--blk) !important; font-family: 'Space Mono', monospace; font-weight: 700; }
+
+    /* BANNER TOPO & BUSCA */
+    .hero-banner { background-color: var(--cream); border-bottom: 4px solid var(--blk); padding-bottom: 2.5rem; }
+    .banner-img { width: 100%; max-width: 1440px; height: auto; display: block; margin: 0 auto; }
+    .search-wrapper { max-width: 920px; margin: -45px auto 0; padding: 0 1rem; position: relative; z-index: 2; }
+    @media (max-width: 768px) { .search-wrapper { margin-top: 1rem; } }
+
+    /* DESTAQUE 90'S HITS */
+    .hits-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; border: 3px solid var(--blk); }
+
+    /* CARDS, LISTA COMPACTA & PLAYLIST */
+    .v-card { height: 100%; display: flex; flex-direction: column; justify-content: space-between; transition: .15s; }
+    .v-card:hover { transform: translate(-3px, -3px); box-shadow: 9px 9px 0 var(--red); }
+    .thumb-box { position: relative; border-bottom: 3px solid var(--blk); cursor: pointer; overflow: hidden; aspect-ratio: 16 / 9; background: #000; }
+    .thumb-box svg, .thumb-box img, .pl-mini svg, .pl-mini img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .play-ov { position: absolute; inset: 0; background: rgba(0,0,0,.68); display: flex; align-items: center; justify-content: center; opacity: 0; transition: .15s; color: var(--cream); font-family: 'Archivo Black', sans-serif; }
+    .thumb-box:hover .play-ov { opacity: 1; }
+    .tag-b { display: inline-block; background: var(--blk); color: var(--cream); font-size: .7rem; font-weight: 700; padding: 2px 7px; margin: 0 4px 4px 0; text-transform: uppercase; }
+    .tag-b.red { background: var(--red); color: var(--wht); }
+    .tag-b.maroon { background: var(--maroon); color: var(--cream); }
+    .hazard-div { height: 18px; border-top: 3px solid var(--blk); border-bottom: 3px solid var(--blk); background: repeating-linear-gradient(-45deg, var(--red) 0 12px, var(--cream) 12px 20px, var(--blk) 20px 28px, var(--cream) 28px 36px); }
+
+    /* LINHA DA LISTA DE EPISÓDIOS */
+    .ep-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .75rem 1rem; border-bottom: 2px solid var(--blk); background: var(--cream); transition: .12s; }
+    .ep-row:hover { background: #EFEAD2; }
+    .ep-row:last-child { border-bottom: none; }
+
+    /* PLAYLIST DO MODAL */
+    .pl-item { display: flex; gap: .6rem; padding: .6rem; border-bottom: 2px solid var(--blk); cursor: pointer; align-items: center; }
+    .pl-item:hover { background: #EDE7CE; }
+    .pl-item.active { background: var(--red); color: var(--wht); }
+    .pl-mini { width: 78px; min-width: 78px; height: 44px; border: 2px solid var(--blk); background: #000; }
+    .toast-b { position: fixed; bottom: 18px; right: 18px; z-index: 999; background: var(--blk); color: var(--cream); border: 3px solid var(--red); box-shadow: 5px 5px 0 var(--red); padding: .65rem 1rem; font-weight: 700; font-size: .82rem; }
+  </style>
+</head>
+<body>
+
+  <div id="app" v-cloak>
+
+    <!-- CABEÇALHO & BUSCA -->
+    <header class="hero-banner">
+      <img src="Anima.png" alt="ANIMATRIX" class="banner-img">
+
+      <div class="container search-wrapper">
+        <div class="search-box">
+          <!-- Campo de Busca -->
+          <div class="field has-addons mb-3">
+            <div class="control is-expanded">
+              <input v-model="searchQuery" class="input inp-b" type="text" placeholder="Buscar anime, saga ou episódio (ex: Asgard, Episódio 12, Freeza)...">
+            </div>
+            <div class="control">
+              <button v-if="searchQuery" @click="searchQuery = ''" class="button btn-b btn-cream">✕ LIMPAR</button>
+              <button v-else class="button btn-b btn-red">▶ BUSCAR</button>
+            </div>
+          </div>
+
+          <!-- BARRA SUPERIOR: ALAS DE ANIMES (CONTA ANIMES E SAGAS, NÃO EPISÓDIOS) -->
+          <div class="is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-center" style="gap: 8px;">
+            <div class="buttons mb-0">
+              <button
+                class="button is-small btn-b btn-cream"
+                :class="{ 'is-on': !onlyFavs && selectedAnime === 'all' }"
+                @click="selectAnime('all')">
+                TODOS OS ANIMES ({{ animeList.length }})
+              </button>
+
+              <button
+                v-for="anime in animeList"
+                :key="anime.name"
+                @click="selectAnime(anime.name)"
+                class="button is-small btn-b btn-cream"
+                :class="{ 'is-on': !onlyFavs && selectedAnime === anime.name }">
+                📺 {{ anime.name }} ({{ anime.sagaCount }} {{ anime.sagaCount === 1 ? 'SAGA' : 'SAGAS' }})
+              </button>
+            </div>
+
+            <div class="buttons mb-0">
+              <button @click="showGithubBox = !showGithubBox" class="button is-small btn-b" :class="githubSources.length > 0 ? 'btn-saved' : 'btn-cream'">
+                📡 LISTAS GITHUB ({{ githubSources.length }})
+              </button>
+              <button @click="onlyFavs = !onlyFavs" class="button is-small btn-b" :class="onlyFavs ? 'btn-red' : 'btn-blk'">
+                🔖 MINHA LISTA <span class="tag is-danger ml-2">{{ favorites.length }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- PAINEL DE GERENCIAMENTO DE LISTAS DO GITHUB (POR ANIME) -->
+          <div v-if="showGithubBox" class="mt-3 pt-3" style="border-top: 2px dashed #000;">
+            <p class="is-size-7 has-text-weight-bold mb-2">
+              ADICIONAR NOVA ALA DE ANIME VIA GITHUB (.JSON OU .M3U):
+            </p>
+            <div class="columns is-variable is-2 mb-2">
+              <div class="column is-4">
+                <input
+                  v-model="newSourceName"
+                  class="input is-small inp-b"
+                  type="text"
+                  placeholder="Nome da Ala (ex: DRAGON BALL)">
+              </div>
+              <div class="column is-6">
+                <input
+                  v-model="newSourceUrl"
+                  class="input is-small inp-b"
+                  type="url"
+                  placeholder="https://gist.github.com/... ou .../lista.json">
+              </div>
+              <div class="column is-2">
+                <button class="button is-small btn-b btn-red is-fullwidth" :disabled="isLoading" @click="addGitHubSource">
+                  {{ isLoading ? 'LENDO...' : '+ ADICIONAR' }}
+                </button>
+              </div>
+            </div>
+
+            <p v-if="githubError" class="is-size-7 has-text-weight-bold mb-2" style="color: #E6331A;">
+              ⚠ {{ githubError }}
+            </p>
+
+            <!-- Listas já conectadas -->
+            <div v-if="githubSources.length > 0" class="mt-2">
+              <span class="is-size-7 has-text-weight-bold is-block mb-1">ALAS CONECTADAS:</span>
+              <div class="is-flex is-flex-wrap-wrap" style="gap: 6px;">
+                <span v-for="(src, idx) in githubSources" :key="src.url" class="tag-b" style="padding: 5px 8px;">
+                  📺 {{ src.name }}
+                  <button @click="removeGitHubSource(idx)" style="background:none; border:none; color:#E6331A; font-weight:bold; cursor:pointer; margin-left:6px;">✕</button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- DESTAQUE THE 90'S HITS -->
+    <section class="section pt-5 pb-3" v-if="videos.length > 0">
+      <div class="container">
+        <div class="featured-box">
+          <div class="columns is-vcentered is-variable is-5">
+            <div class="column is-4-desktop is-5-tablet">
+              <img src="90s.png" alt="The 90's Hits" class="hits-img">
+            </div>
+            <div class="column">
+              <span class="tag-b red mb-2">★ DESTAQUE DA ALA: {{ featuredVideo.anime }}</span>
+              <h2 class="title is-2 f-arch mb-2" style="color: #000;">{{ featuredVideo.title }}</h2>
+              <p class="mb-2">
+                <span class="tag-b maroon">{{ featuredVideo.saga }}</span>
+              </p>
+              <p class="mb-4">{{ featuredVideo.desc || 'Série completa organizada por sagas e temporadas no ANIMATRIX.' }}</p>
+              <button class="button is-medium btn-b btn-red" @click="openPlayer(featuredVideo)">▶ ASSISTIR AGORA</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="hazard-div my-4"></div>
+
+    <!-- CATÁLOGO ORGANIZADO POR ALA & SAGA -->
+    <main class="section pt-3 pb-6">
+      <div class="container">
+
+        <!-- NÍVEL 2: PAINEL DE SAGAS / TEMPORADAS DO ANIME SELECIONADO -->
+        <div v-if="!onlyFavs && currentSagas.length > 1" class="wing-panel mb-5">
+          <div class="is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-center mb-3" style="gap: 8px;">
+            <div>
+              <span class="tag-b red">ALA ATIVA</span>
+              <strong class="f-arch is-size-5 ml-1">
+                {{ selectedAnime === 'all' ? 'TODOS OS ANIMES' : selectedAnime }}
+              </strong>
+              <span class="is-size-7 ml-2">— Selecione a Saga ou Temporada:</span>
+            </div>
+            <span class="tag-b">{{ currentSagas.length }} SAGAS</span>
+          </div>
+
+          <div class="buttons mb-0">
+            <button
+              class="button is-small btn-b btn-cream"
+              :class="{ 'is-on': selectedSaga === 'all' }"
+              @click="selectSaga('all')">
+              TODAS AS SAGAS ({{ currentSagas.length }})
+            </button>
+
+            <button
+              v-for="s in currentSagas"
+              :key="s.name"
+              @click="selectSaga(s.name)"
+              class="button is-small btn-b btn-cream"
+              :class="{ 'is-on': selectedSaga === s.name }">
+              {{ s.name }}
+            </button>
+          </div>
+        </div>
+
+        <!-- CABEÇALHO DO CATÁLOGO + MODO DE VISUALIZAÇÃO -->
+        <div class="is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-center mb-4" style="gap: 10px;">
+          <div>
+            <h3 class="title is-4 f-arch mb-0" style="color: #000;">
+              <template v-if="onlyFavs">MINHA LISTA SALVA</template>
+              <template v-else-if="selectedSaga !== 'all'">{{ selectedSaga }}</template>
+              <template v-else-if="selectedAnime !== 'all'">{{ selectedAnime }} ({{ currentSagas.length }} SAGAS)</template>
+              <template v-else>CATÁLOGO COMPLETO ({{ currentSagas.length }} SAGAS)</template>
+            </h3>
+          </div>
+
+          <!-- Alternar entre Grade (Cards) e Lista Compacta de Episódios -->
+          <div class="buttons mb-0">
+            <button class="button is-small btn-b btn-cream" :class="{ 'is-on': viewMode === 'grid' }" @click="viewMode = 'grid'">
+              ⊞ CARDS
+            </button>
+            <button class="button is-small btn-b btn-cream" :class="{ 'is-on': viewMode === 'list' }" @click="viewMode = 'list'">
+              ☰ LISTA DE EPISÓDIOS
+            </button>
+          </div>
+        </div>
+
+        <!-- MENSAGEM VAZIA -->
+        <div v-if="filteredVideos.length === 0" class="brutal-box p-5 has-text-centered">
+          <p class="f-arch is-size-5 mb-2">NENHUM EPISÓDIO ENCONTRADO</p>
+          <p class="mb-4">Tente buscar outro termo ou limpe os filtros selecionados.</p>
+          <button class="button btn-b btn-red" @click="resetFilters">MOSTRAR TODAS AS SAGAS</button>
+        </div>
+
+        <!-- MODO 1: GRADE DE CARDS (PAGINADA) -->
+        <div v-else-if="viewMode === 'grid'" class="columns is-multiline">
+          <div v-for="video in paginatedVideos" :key="video.id" class="column is-3-desktop is-6-tablet">
+            <div class="brutal-box v-card">
+              <div>
+                <div class="thumb-box" @click="openPlayer(video)">
+                  <img v-if="video.thumb" :src="video.thumb" :alt="video.title" @error="video.thumb = ''">
+                  <div v-else v-html="makeThumb(video)"></div>
+                  <div class="play-ov">▶ ASSISTIR</div>
+                </div>
+                <div class="p-3">
+                  <div>
+                    <span class="tag-b red">{{ video.anime }}</span>
+                    <span class="tag-b maroon">{{ video.saga }}</span>
+                  </div>
+                  <h4 class="f-arch is-size-6 mt-1 mb-1">{{ video.title }}</h4>
+                  <p class="is-size-7" v-if="video.desc">{{ video.desc }}</p>
+                </div>
+              </div>
+
+              <div class="p-3 pt-0 is-flex" style="gap: 6px;">
+                <button class="button is-small btn-b btn-red is-flex-grow-1" @click="openPlayer(video)">▶ PLAY</button>
+                <button
+                  class="button is-small btn-b"
+                  :class="isFavorite(video.id) ? 'btn-saved' : 'btn-cream'"
+                  @click="toggleFavorite(video)">
+                  {{ isFavorite(video.id) ? '✓' : '+ LISTA' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODO 2: LISTA COMPACTA DE EPISÓDIOS -->
+        <div v-else class="brutal-box">
+          <div v-for="(video, idx) in paginatedVideos" :key="video.id" class="ep-row">
+            <div class="is-flex is-align-items-center" style="gap: 12px; flex: 1; min-width: 0;">
+              <span class="tag-b red mb-0">#{{ (currentPage - 1) * perPage + idx + 1 }}</span>
+              <div style="min-width: 0;">
+                <div class="f-arch is-size-6" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  {{ video.title }}
+                </div>
+                <div class="is-size-7">
+                  <strong>{{ video.anime }}</strong> • {{ video.saga }}
+                </div>
+              </div>
+            </div>
+
+            <div class="buttons mb-0" style="flex-shrink: 0;">
+              <button class="button is-small btn-b btn-red" @click="openPlayer(video)">▶ ASSISTIR</button>
+              <button
+                class="button is-small btn-b"
+                :class="isFavorite(video.id) ? 'btn-saved' : 'btn-cream'"
+                @click="toggleFavorite(video)">
+                {{ isFavorite(video.id) ? '✓ SALVO' : '+ LISTA' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTROLES DE PAGINAÇÃO -->
+        <div v-if="totalPages > 1" class="is-flex is-justify-content-center is-align-items-center mt-5" style="gap: 10px;">
+          <button class="button is-small btn-b btn-cream" :disabled="currentPage === 1" @click="currentPage--">
+            ◀ ANTERIOR
+          </button>
+          <span class="tag-b" style="padding: 8px 14px; font-size: .85rem;">
+            PÁGINA {{ currentPage }} DE {{ totalPages }}
+          </span>
+          <button class="button is-small btn-b btn-red" :disabled="currentPage === totalPages" @click="currentPage++">
+            PRÓXIMA ▶
+          </button>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- MODAL PLAYER DE VÍDEO -->
+    <div class="modal" :class="{ 'is-active': activeVideo !== null }">
+      <div class="modal-background" @click="closePlayer"></div>
+      <div class="modal-card" style="width: 95%; max-width: 1080px;">
+        <header class="modal-card-head" style="background: #000; color: #F6F2E0; border-radius: 0; border-bottom: 3px solid #E6331A;">
+          <p class="modal-card-title f-arch" style="color: #F6F2E0; font-size: 1rem;">
+            ▶ {{ activeVideo?.anime }} — {{ activeVideo?.title }}
+          </p>
+          <button class="button is-small btn-b btn-red" @click="closePlayer">✕ FECHAR</button>
+        </header>
+
+        <section class="modal-card-body p-0" style="background: #F6F2E0; border: 3px solid #000;">
+          <div class="columns is-gapless mb-0">
+            <div class="column is-8" style="background: #000;">
+              <video
+                v-if="activeVideo"
+                ref="playerEl"
+                controls
+                autoplay
+                playsinline
+                style="width: 100%; display: block; max-height: 460px;">
+              </video>
+              <div class="p-4" style="background: #F6F2E0; border-top: 3px solid #000;">
+                <div class="is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-center mb-2" style="gap: 8px;">
+                  <div>
+                    <span class="tag-b red">{{ activeVideo?.anime }}</span>
+                    <span class="tag-b maroon">{{ activeVideo?.saga }}</span>
+                  </div>
+                  <div class="buttons mb-0">
+                    <button class="button is-small btn-b btn-cream" @click="playRelative(-1)">◀ EP. ANTERIOR</button>
+                    <button class="button is-small btn-b btn-red" @click="playRelative(1)">PRÓXIMO EP. ▶</button>
+                  </div>
+                </div>
+                <p class="is-size-7">{{ activeVideo?.desc }}</p>
+              </div>
+            </div>
+
+            <!-- Playlist da Saga Atual no Player -->
+            <div class="column is-4" style="border-left: 3px solid #000; max-height: 580px; overflow-y: auto;">
+              <div class="p-2 f-arch is-size-7" style="background: #000; color: #F6F2E0;">
+                {{ activeVideo?.saga }} ({{ activeSagaPlaylist.length }})
+              </div>
+              <div
+                v-for="item in activeSagaPlaylist"
+                :key="item.id"
+                class="pl-item"
+                :class="{ active: activeVideo?.id === item.id }"
+                @click="openPlayer(item)">
+                <div class="pl-mini">
+                  <img v-if="item.thumb" :src="item.thumb" :alt="item.title">
+                  <div v-else v-html="makeThumb(item)"></div>
+                </div>
+                <div>
+                  <div class="f-arch is-size-7">{{ item.title }}</div>
+                  <div style="font-size: .7rem;">{{ item.saga }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div v-if="toastMsg" class="toast-b">{{ toastMsg }}</div>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+
+    const INITIAL_GITHUB_SOURCES = [
+      {
+        name: 'CAVALEIROS DO ZODÍACO',
+        url: 'https://gist.github.com/guilhermeenzo/0d46666feb0504b13a56d791324cddb9'
+      }
+    ];
+
+    createApp({
+      data() {
+        return {
+          searchQuery: '',
+          selectedAnime: 'all',
+          selectedSaga: 'all',
+          onlyFavs: false,
+          viewMode: 'grid',
+          currentPage: 1,
+          perPage: 24,
+          activeVideo: null,
+          hlsInstance: null,
+          toastMsg: '',
+          toastTimer: null,
+          showGithubBox: false,
+          newSourceName: '',
+          newSourceUrl: '',
+          githubError: '',
+          isLoading: false,
+          githubSources: JSON.parse(localStorage.getItem('animatrix_sources_v2') || 'null') || INITIAL_GITHUB_SOURCES,
+          favorites: JSON.parse(localStorage.getItem('animatrix_favs') || '[]'),
+          videos: []
+        };
+      },
+
+      mounted() {
+        this.loadAllSources();
+      },
+
+      computed: {
+        // Nível 1: Cada anime é contado como 1 único e exibe apenas o número de sagas
+        animeList() {
+          const map = new Map();
+          for (const v of this.videos) {
+            const name = (v.anime || 'OUTROS').toUpperCase();
+            const saga = (v.saga || 'EPISÓDIOS').toUpperCase();
+            if (!map.has(name)) {
+              map.set(name, new Set());
+            }
+            map.get(name).add(saga);
+          }
+          return Array.from(map.entries()).map(([name, sagasSet]) => ({
+            name,
+            sagaCount: sagasSet.size
+          }));
+        },
+
+        // Nível 2: Sagas/Temporadas pertencentes apenas ao Anime selecionado
+        currentSagas() {
+          const base = this.selectedAnime === 'all'
+            ? this.videos
+            : this.videos.filter(v => v.anime === this.selectedAnime);
+
+          const map = new Map();
+          for (const v of base) {
+            const saga = (v.saga || 'EPISÓDIOS').toUpperCase();
+            map.set(saga, (map.get(saga) || 0) + 1);
+          }
+          return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+        },
+
+        // Filtragem combinada: Anime + Saga + Busca + Favoritos
+        filteredVideos() {
+          const q = this.searchQuery.toLowerCase().trim();
+          return this.videos.filter(v => {
+            if (this.onlyFavs && !this.favorites.includes(v.id)) return false;
+            if (!this.onlyFavs && this.selectedAnime !== 'all' && v.anime !== this.selectedAnime) return false;
+            if (!this.onlyFavs && this.selectedSaga !== 'all' && v.saga !== this.selectedSaga) return false;
+            if (!q) return true;
+
+            return (
+              (v.title || '').toLowerCase().includes(q) ||
+              (v.anime || '').toLowerCase().includes(q) ||
+              (v.saga || '').toLowerCase().includes(q) ||
+              (v.desc || '').toLowerCase().includes(q)
+            );
+          });
+        },
+
+        totalPages() {
+          return Math.max(1, Math.ceil(this.filteredVideos.length / this.perPage));
+        },
+
+        paginatedVideos() {
+          const start = (this.currentPage - 1) * this.perPage;
+          return this.filteredVideos.slice(start, start + this.perPage);
+        },
+
+        featuredVideo() {
+          return this.filteredVideos[0] || this.videos[0];
+        },
+
+        activeSagaPlaylist() {
+          if (!this.activeVideo) return [];
+          return this.videos.filter(
+            v => v.anime === this.activeVideo.anime && v.saga === this.activeVideo.saga
+          );
+        }
+      },
+
+      watch: {
+        searchQuery() { this.currentPage = 1; },
+        selectedAnime() { this.currentPage = 1; },
+        selectedSaga() { this.currentPage = 1; },
+        onlyFavs() { this.currentPage = 1; },
+        favorites: {
+          handler(newVal) {
+            localStorage.setItem('animatrix_favs', JSON.stringify(newVal));
+          },
+          deep: true
+        },
+        githubSources: {
+          handler(newVal) {
+            localStorage.setItem('animatrix_sources_v2', JSON.stringify(newVal));
+          },
+          deep: true
+        },
+        activeVideo(newVid) {
+          if (this.hlsInstance) {
+            this.hlsInstance.destroy();
+            this.hlsInstance = null;
+          }
+          if (!newVid) return;
+
+          this.$nextTick(() => {
+            const videoEl = this.$refs.playerEl;
+            if (!videoEl) return;
+            const src = newVid.videoSrc;
+
+            if (src.includes('.m3u8') && window.Hls && Hls.isSupported()) {
+              this.hlsInstance = new Hls();
+              this.hlsInstance.loadSource(src);
+              this.hlsInstance.attachMedia(videoEl);
+              this.hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => videoEl.play().catch(() => {}));
+            } else {
+              videoEl.src = src;
+              videoEl.play().catch(() => {});
+            }
+          });
+        }
+      },
+
+      methods: {
+        normalizeGitHubUrl(url) {
+          let clean = url.trim().replace(/\/$/, '');
+          if (clean.includes('gist.github.com/')) {
+            clean = clean.replace('https://gist.github.com/', 'https://gist.githubusercontent.com/');
+            if (!clean.includes('/raw')) clean += '/raw';
+          } else if (clean.includes('github.com/') && clean.includes('/blob/')) {
+            clean = clean
+              .replace('https://github.com/', 'https://raw.githubusercontent.com/')
+              .replace('/blob/', '/');
+          }
+          return clean;
+        },
+
+        classifyAnimeAndSaga(rawAnime, rawGroup, title, fallbackAnimeName) {
+          const animeStr = (rawAnime || '').trim().toUpperCase();
+          const groupStr = (rawGroup || '').trim().toUpperCase();
+          const fullText = `${animeStr} ${groupStr} ${(title || '').toUpperCase()}`;
+
+          if (!animeStr && groupStr.includes('|')) {
+            const [a, s] = groupStr.split('|').map(x => x.trim());
+            return { anime: a, saga: s || 'EPISÓDIOS' };
+          }
+
+          if (animeStr) {
+            return { anime: animeStr, saga: groupStr || 'EPISÓDIOS' };
+          }
+
+          if (/DRAGON\s*BALL|\bDBZ\b|\bDBGT\b|\bDBS\b/.test(fullText)) {
+            return { anime: 'DRAGON BALL', saga: groupStr || 'DRAGON BALL' };
+          }
+          if (/CAVALEIROS|SAINT\s*SEIYA|GUERRA\s*GAL[ÁA]CTICA|SANTU[ÁA]RIO|DOZE\s*CASAS|ASGARD|POSEIDON|HADES|LOST\s*CANVAS|[ÔO]MEGA|ALMA\s*DE\s*OURO/.test(fullText)) {
+            return { anime: 'CAVALEIROS DO ZODÍACO', saga: groupStr || 'SÉRIE CLÁSSICA' };
+          }
+
+          return {
+            anime: (fallbackAnimeName || 'CATÁLOGO').toUpperCase(),
+            saga: groupStr || 'EPISÓDIOS'
+          };
+        },
+
+        async loadAllSources() {
+          this.isLoading = true;
+          this.githubError = '';
+          let combined = [];
+
+          for (const src of this.githubSources) {
+            try {
+              const items = await this.fetchSingleSource(src.url, src.name);
+              combined = combined.concat(items);
+            } catch (err) {
+              this.githubError = `Erro ao carregar "${src.name}": ${err.message}`;
+            }
+          }
+
+          this.videos = combined;
+          if (this.animeList.length === 1) {
+            this.selectedAnime = this.animeList[0].name;
+          }
+          this.isLoading = false;
+        },
+
+        async fetchSingleSource(url, sourceName) {
+          const rawUrl = this.normalizeGitHubUrl(url);
+          const response = await fetch(rawUrl);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text = await response.text();
+
+          if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+            return this.parseJsonList(text, sourceName);
+          } else if (text.includes('#EXTM3U') || text.includes('#EXTINF')) {
+            return this.parseM3uList(text, sourceName);
+          }
+          throw new Error('Formato inválido (use .JSON ou .M3U)');
+        },
+
+        async addGitHubSource() {
+          if (!this.newSourceUrl.trim()) {
+            this.githubError = 'Cole a URL do arquivo no GitHub.';
+            return;
+          }
+          const name = (this.newSourceName.trim() || 'NOVO ANIME').toUpperCase();
+          const url = this.newSourceUrl.trim();
+
+          this.githubSources.push({ name, url });
+          this.newSourceName = '';
+          this.newSourceUrl = '';
+          await this.loadAllSources();
+          this.selectAnime(name);
+          this.showToast(`ALA "${name}" ADICIONADA!`);
+        },
+
+        async removeGitHubSource(idx) {
+          this.githubSources.splice(idx, 1);
+          this.selectedAnime = 'all';
+          this.selectedSaga = 'all';
+          await this.loadAllSources();
+          this.showToast('ALA REMOVIDA');
+        },
+
+        parseJsonList(text, sourceName) {
+          const data = JSON.parse(text);
+          const list = Array.isArray(data) ? data : (data.videos || []);
+          const palette = [
+            { bg: '#E6331A', fg: '#000' },
+            { bg: '#000', fg: '#E6331A' },
+            { bg: '#6B0700', fg: '#F6F2E0' },
+            { bg: '#D42C07', fg: '#000' }
+          ];
+
+          return list
+            .filter(item => item.videoSrc || item.url || item.src)
+            .map((item, idx) => {
+              const title = item.title || item.name || `EPISÓDIO #${idx + 1}`;
+              const { anime, saga } = this.classifyAnimeAndSaga(
+                item.anime || item.series || item.franchise,
+                item.saga || item.season || item.cat || item.group,
+                title,
+                sourceName
+              );
+              return {
+                id: item.id || `${sourceName}-${idx + 1}`,
+                title,
+                anime,
+                saga,
+                thumb: item.thumb || item.logo || item.cover || '',
+                desc: item.desc || item.description || '',
+                videoSrc: item.videoSrc || item.url || item.src,
+                bg: palette[idx % palette.length].bg,
+                fg: palette[idx % palette.length].fg
+              };
+            });
+        },
+
+        parseM3uList(text, sourceName) {
+          const lines = text.split(/\r?\n/);
+          const result = [];
+          const palette = [
+            { bg: '#E6331A', fg: '#000' },
+            { bg: '#000', fg: '#E6331A' },
+            { bg: '#6B0700', fg: '#F6F2E0' },
+            { bg: '#D42C07', fg: '#000' }
+          ];
+          let currentMeta = null;
+
+          for (const rawLine of lines) {
+            const line = rawLine.trim();
+            if (!line) continue;
+
+            if (line.startsWith('#EXTINF:')) {
+              const titleMatch = line.split(',').pop().trim();
+              const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
+              const groupMatch = line.match(/group-title="([^"]*)"/i);
+              const animeMatch = line.match(/anime-title="([^"]*)"/i);
+              currentMeta = {
+                title: titleMatch || `EPISÓDIO #${result.length + 1}`,
+                thumb: logoMatch ? logoMatch[1] : '',
+                group: groupMatch ? groupMatch[1] : '',
+                anime: animeMatch ? animeMatch[1] : ''
+              };
+            } else if (!line.startsWith('#')) {
+              const idx = result.length;
+              const title = currentMeta ? currentMeta.title : `EPISÓDIO #${idx + 1}`;
+              const { anime, saga } = this.classifyAnimeAndSaga(
+                currentMeta?.anime,
+                currentMeta?.group,
+                title,
+                sourceName
+              );
+              result.push({
+                id: `${sourceName}-m3u-${idx + 1}`,
+                title,
+                anime,
+                saga,
+                thumb: currentMeta ? currentMeta.thumb : '',
+                desc: '',
+                videoSrc: line,
+                bg: palette[idx % palette.length].bg,
+                fg: palette[idx % palette.length].fg
+              });
+              currentMeta = null;
+            }
+          }
+          return result;
+        },
+
+        selectAnime(animeName) {
+          this.onlyFavs = false;
+          this.selectedAnime = animeName;
+          this.selectedSaga = 'all';
+        },
+        selectSaga(sagaName) {
+          this.onlyFavs = false;
+          this.selectedSaga = sagaName;
+        },
+        resetFilters() {
+          this.searchQuery = '';
+          this.selectedAnime = 'all';
+          this.selectedSaga = 'all';
+          this.onlyFavs = false;
+        },
+        isFavorite(id) {
+          return this.favorites.includes(id);
+        },
+        toggleFavorite(video) {
+          const idx = this.favorites.indexOf(video.id);
+          if (idx > -1) {
+            this.favorites.splice(idx, 1);
+            this.showToast(`REMOVIDO: ${video.title}`);
+          } else {
+            this.favorites.push(video.id);
+            this.showToast(`SALVO NA LISTA: ${video.title}`);
+          }
+        },
+        openPlayer(video) {
+          this.activeVideo = video;
+        },
+        closePlayer() {
+          this.activeVideo = null;
+        },
+        playRelative(step) {
+          if (!this.activeVideo) return;
+          const list = this.activeSagaPlaylist;
+          const idx = list.findIndex(v => v.id === this.activeVideo.id);
+          const nextIdx = (idx + step + list.length) % list.length;
+          this.activeVideo = list[nextIdx];
+        },
+        showToast(msg) {
+          this.toastMsg = msg;
+          clearTimeout(this.toastTimer);
+          this.toastTimer = setTimeout(() => { this.toastMsg = ''; }, 2400);
+        },
+        makeThumb(v) {
+          const bg = v.bg || '#E6331A';
+          const fg = v.fg || '#000';
+          return `<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+            <rect width="320" height="180" fill="${bg}"/>
+            <circle cx="265" cy="35" r="55" fill="${fg}" opacity="0.85"/>
+            <polygon points="0,145 95,145 75,180 0,180" fill="${fg}"/>
+            <polygon points="110,145 165,145 145,180 90,180" fill="#F6F2E0"/>
+            <text x="16" y="84" font-family="'Archivo Black', sans-serif" font-size="20" fill="#F6F2E0" stroke="#000" stroke-width="1.2">${(v.title || '').slice(0, 18)}</text>
+            <text x="16" y="112" font-family="'Space Mono', monospace" font-weight="700" font-size="12" fill="#F6F2E0">${(v.saga || '').slice(0, 26)}</text>
+          </svg>`;
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
